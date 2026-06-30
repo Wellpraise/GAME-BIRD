@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>小鸟闯关·仅1米移动完整版</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;font-family:Arial}
+body{height:100vh;display:flex;flex-direction:column;overflow:hidden}
+.top-bar{height:60px;background:#223344;color:#fff;display:flex;align-items:center;padding:0 20px;gap:10px;flex-wrap:wrap}
+button{padding:6px 12px;border-radius:6px;border:none;cursor:pointer;font-size:13px}
+#start{background:#28b964;color:#fff}
+#reset{background:#778899;color:#fff}
+#toggleRuler{background:#ff7722;color:#fff}
+.main-box{display:flex;flex:1}
+
+.left-block{width:280px;background:#f5f7fa;border-right:1px solid #ccc;padding:10px;overflow-y:auto}
+.cmd-block{background:#4488dd;color:#fff;padding:8px;margin:6px 0;border-radius:6px;cursor:move;user-select:none;font-size:12px}
+
+.mid-code{flex:1;background:#eef2f7;padding:16px;overflow-y:auto}
+.line-item{background:#fff;border:1px solid #d0d8e3;padding:8px 10px;margin:7px 0;border-radius:6px;display:flex;justify-content:space-between;align-items:center;gap:8px}
+.btn-group{display:flex;gap:4px}
+.del-btn{background:#ff4444;color:white;border:none;padding:3px 8px;border-radius:4px;cursor:pointer;font-size:12px}
+.run-btn{background:#28b964;color:white;border:none;padding:3px 8px;border-radius:4px;font-size:12px}
+.empty-tip{color:#8899aa;text-align:center;margin-top:60px}
+
+.right-game{width:460px;border-left:1px solid #ccc;padding:12px;background:#fff}
+#game-area{width:100%;height:320px;border:2px solid #666;position:relative;overflow:hidden;background:#82c6f5}
+
+.ground{position:absolute;width:100%;height:55px;background:#f9d048;bottom:80px}
+.crack{position:absolute;width:20px;height:55px;background:#000;bottom:80px;left:180px;border-radius:4px}
+.nest{position:absolute;right:15px;bottom:80px;width:60px;height:70px;background:#ff88bb;border-radius:6px}
+
+.ruler{position:absolute;bottom:0;width:100%;height:80px;background:#f0f0f0;border-top:2px solid #333;display:flex;align-items:flex-start;padding-top:5px;transition:0.3s}
+.ruler.hide{display:none}
+.ruler-mark{width:40px;height:25px;border-left:1px solid #333;text-align:center;font-size:12px;color:#222}
+
+.bird{width:10px;height:10px;background:#e64545;border-radius:50%;position:absolute;bottom:80px;left:20px;transition:0.4s}
+.bird.jump{animation:birdJump 0.5s ease}
+.pig{width:10px;height:10px;background:#2ecd4e;border-radius:45%;position:absolute;bottom:80px}
+.pig.jump{animation:pigJump 0.5s ease}
+
+.thunder{
+    position:absolute;
+    width:3px;
+    background:#ffff00;
+    box-shadow:0 0 12px #fff,0 0 25px yellow;
+    top:0;
+    animation:thunderDown 0.4s linear forwards;
+    z-index:99;
+}
+@keyframes thunderDown{
+    0%{height:0;opacity:1;}
+    100%{height:240px;opacity:0;}
+}
+
+.game-over{position:absolute;top:120px;left:50%;transform:translateX(-50%);font-size:48px;font-weight:bold;color:red;text-shadow:0 0 10px #fff;display:none}
+.fire{position:absolute;width:15px;height:15px;border-radius:50%;animation:boom 0.8s forwards}
+@keyframes boom{
+    0%{opacity:1;transform:scale(1)}
+    100%{opacity:0;transform:scale(3)}
+}
+
+@keyframes birdJump{
+    0%,100%{bottom:80px;}
+    50%{bottom:140px;}
+}
+@keyframes pigJump{
+    0%,100%{bottom:80px;}
+    50%{bottom:140px;}
+}
+</style>
+</head>
+<body>
+<div class="top-bar">
+    <h2>色块小鸟编程闯关</h2>
+    <button id="start">全部一键运行</button>
+    <button id="reset">重置全部场景</button>
+    <button id="toggleRuler">显示/隐藏标尺</button>
+    <span>能量值：<span id="power-num">0</span>/100</span>
+    <span>当前距离：<span id="distance">0</span> 米</span>
+    <span>闯关积分：<span id="score">0</span> 分</span>
+</div>
+
+<div class="main-box">
+    <div class="left-block">
+        <h4 style="margin:5px 0;color:#333">小鸟移动</h4>
+        <div class="cmd-block" draggable="true" data-type="walk1">向前走 1米</div>
+        <div class="cmd-block" draggable="true" data-type="back1">向后退 1米</div>
+        <div class="cmd-block" draggable="true" data-type="jumpForward">小鸟向前跳跃 3米</div>
+
+        <h4 style="margin:8px 0;color:#333">小猪指令</h4>
+        <div class="cmd-block" draggable="true" data-type="pigWalk1">小猪向前 1米</div>
+        <div class="cmd-block" draggable="true" data-type="pigBack1">小猪后退 1米</div>
+        <div class="cmd-block" draggable="true" data-type="pigJump">小猪向前跳跃 3米</div>
+
+        <h4 style="margin:8px 0;color:#333">场景特效</h4>
+        <div class="cmd-block" draggable="true" data-type="openCrack">地面裂开黑色大洞</div>
+        <div class="cmd-block" draggable="true" data-type="thunder">天上打雷劈下</div>
+
+        <h4 style="margin:8px 0;color:#333">其他指令</h4>
+        <div class="cmd-block" draggable="true" data-type="addPig">生成小猪</div>
+        <div class="cmd-block" draggable="true" data-type="finish">抵达鸟巢过关</div>
+    </div>
+
+    <div class="mid-code" id="code-list">
+        <div class="empty-tip" id="tip-text">把左侧指令拖到这里，编排行动顺序</div>
+    </div>
+
+    <div class="right-game">
+        <div id="game-area">
+            <div class="ground"></div>
+            <div class="nest"></div>
+            <div class="bird" id="main-bird"></div>
+            <div class="game-over" id="gameOver">GAME OVER</div>
+            <div class="ruler" id="rulerBox">
+                <div class="ruler-mark">0m</div>
+                <div class="ruler-mark">1m</div>
+                <div class="ruler-mark">2m</div>
+                <div class="ruler-mark">3m</div>
+                <div class="ruler-mark">4m</div>
+                <div class="ruler-mark">5m</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+const codeList = document.getElementById('code-list');
+const tipText = document.getElementById('tip-text');
+const bird = document.getElementById('main-bird');
+const gameArea = document.getElementById('game-area');
+const powerNum = document.getElementById('power-num');
+const distanceShow = document.getElementById('distance');
+const scoreShow = document.getElementById('score');
+const rulerBox = document.getElementById('rulerBox');
+const gameOver = document.getElementById('gameOver');
+
+let power = 0;
+let nowDistance = 0;
+let score = 0;
+let isFail = false;
+let hasCrack = false;
+
+document.getElementById('toggleRuler').onclick = function(){
+    rulerBox.classList.toggle('hide');
+}
+
+function showBoom(x,y){
+    const color = ['#ff0','#f00','#f0f','#0ff','#ff8800'];
+    for(let i=0;i<12;i++){
+        let f = document.createElement('div');
+        f.className='fire';
+        f.style.left = x+'px';
+        f.style.bottom = y+'px';
+        f.style.background = color[Math.random()*5|0];
+        gameArea.appendChild(f);
+        setTimeout(()=>f.remove(),800);
+    }
+}
+
+function checkTouch(){
+    if(isFail) return;
+    const pigs = gameArea.querySelectorAll('.pig');
+    const bx = parseInt(bird.style.left);
+
+    if(hasCrack && Math.abs(bx - 180) < 20){
+        isFail = true;
+        showBoom(bx,100);
+        gameOver.style.display='block';
+    }
+
+    pigs.forEach(p=>{
+        const px = parseInt(p.style.left);
+        if(Math.abs(bx - px) < 10){
+            isFail = true;
+            showBoom(bx,100);
+            gameOver.style.display='block';
+        }
+    })
+}
+
+async function doThunder(){
+    if(isFail) return;
+    const bx = parseInt(bird.style.left);
+    const pigs = gameArea.querySelectorAll('.pig');
+
+    let lightning = document.createElement('div');
+    lightning.className = 'thunder';
+    lightning.style.left = bx + "px";
+    gameArea.appendChild(lightning);
+
+    await sleep(400);
+    isFail = true;
+    showBoom(bx,100);
+    gameOver.style.display='block';
+
+    pigs.forEach(pig=>{
+        const px = parseInt(pig.style.left);
+        if(Math.abs(bx - px) < 15){
+            showBoom(px,100);
+        }
+    })
+    setTimeout(()=>lightning.remove(),500);
+}
+
+async function runToLine(index){
+    if(isFail) return;
+    const tasks = codeList.querySelectorAll('.line-item');
+    power = 0;
+    nowDistance = 0;
+    score = 0;
+    hasCrack = false;
+    gameArea.querySelectorAll('.pig,.fire,.thunder,.crack').forEach(el=>el.remove());
+    bird.style.left = "20px";
+    bird.classList.remove('jump');
+    gameOver.style.display='none';
+
+    for(let i=0;i<=index;i++){
+        let task = tasks[i];
+        let act = task.dataset.type;
+        await sleep(900);
+        power += 12;
+        if(power>100) power=100;
+        powerNum.innerText = power;
+
+        switch(act){
+            case 'walk1':
+                nowDistance+=1;
+                bird.style.left = parseInt(bird.style.left)+11+"px";
+                break;
+            case 'back1':
+                nowDistance=Math.max(0,nowDistance-1);
+                bird.style.left = Math.max(0,parseInt(bird.style.left)-11)+"px";
+                break;
+            case 'jumpForward':
+                nowDistance +=3;
+                bird.classList.add('jump');
+                bird.style.left = parseInt(bird.style.left)+33+"px";
+                setTimeout(()=>bird.classList.remove('jump'),500);
+                break;
+
+            case 'pigWalk1':
+                gameArea.querySelectorAll('.pig').forEach(pig=>{
+                    pig.style.left = parseInt(pig.style.left)-11+"px";
+                })
+                break;
+            case 'pigBack1':
+                gameArea.querySelectorAll('.pig').forEach(pig=>{
+                    pig.style.left = parseInt(pig.style.left)+11+"px";
+                })
+                break;
+            case 'pigJump':
+                gameArea.querySelectorAll('.pig').forEach(pig=>{
+                    pig.classList.add('jump');
+                    pig.style.left = parseInt(pig.style.left)-33+"px";
+                    setTimeout(()=>pig.classList.remove('jump'),500);
+                })
+                break;
+
+            case 'openCrack':
+                let crack = document.createElement('div');
+                crack.className = 'crack';
+                gameArea.appendChild(crack);
+                hasCrack = true;
+                break;
+
+            case 'thunder':
+                await doThunder();
+                break;
+        }
+        checkTouch();
+
+        switch(act){
+            case 'addPig':
+                let pig = document.createElement('div');
+                pig.className = 'pig';
+                pig.style.left = 300 + "px";
+                gameArea.appendChild(pig);
+                break;
+            case 'finish':
+                bird.style.left = "340px";
+                nowDistance = 40;
+                distanceShow.innerText = nowDistance;
+                setTimeout(()=>alert(`闯关成功！\n总距离：${nowDistance}米\n最终得分：${score}分`),600);
+                break;
+        }
+        distanceShow.innerText = nowDistance;
+    }
+}
+
+document.querySelectorAll('.cmd-block').forEach(block=>{
+    block.ondragstart = e=>{
+        e.dataTransfer.setData('cmdType', block.dataset.type)
+    }
+})
+
+codeList.ondragover = e=>e.preventDefault();
+codeList.ondrop = e=>{
+    e.preventDefault();
+    tipText.style.display = 'none';
+    let type = e.dataTransfer.getData('cmdType');
+    const nameMap = {
+        walk1:"向前走 1米",
+        back1:"向后退 1米",
+        jumpForward:"小鸟向前跳跃 3米",
+        pigWalk1:"小猪向前 1米",
+        pigBack1:"小猪后退 1米",
+        pigJump:"小猪向前跳跃 3米",
+        openCrack:"地面裂开黑色大洞",
+        thunder:"天上打雷劈下",
+        addPig:"生成小猪",
+        finish:"抵达鸟巢过关"
+    };
+
+    let item = document.createElement('div');
+    item.className = 'line-item';
+    item.innerHTML = `
+        <span>${nameMap[type]}</span>
+        <div class="btn-group">
+            <button class="run-btn">运行到此步</button>
+            <button class="del-btn">删除</button>
+        </div>
+    `;
+    item.dataset.type = type;
+    codeList.appendChild(item);
+    let index = codeList.querySelectorAll('.line-item').length-1;
+
+    item.querySelector('.run-btn').onclick = ()=>runToLine(index);
+    item.querySelector('.del-btn').onclick = ()=>item.remove();
+}
+
+document.getElementById('start').onclick = async function(){
+    const tasks = codeList.querySelectorAll('.line-item');
+    if(tasks.length==0) return;
+    runToLine(tasks.length-1);
+}
+
+document.getElementById('reset').onclick = function(){
+    codeList.innerHTML = `<div class="empty-tip" id="tip-text">把左侧指令拖到这里，编排行动顺序</div>`;
+    gameArea.querySelectorAll('.pig,.fire,.thunder,.crack').forEach(el=>el.remove());
+    bird.style.left = "20px";
+    bird.classList.remove('jump');
+    gameOver.style.display='none';
+    power = 0;nowDistance = 0;score = 0;isFail = false;hasCrack=false;
+    powerNum.innerText=power;distanceShow.innerText=nowDistance;scoreShow.innerText=score;
+}
+
+function sleep(ms){return new Promise(resolve=>setTimeout(resolve,ms))}
+</script>
+</body>
+</html>
